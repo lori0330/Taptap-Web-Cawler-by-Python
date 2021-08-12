@@ -1,0 +1,97 @@
+
+from selenium import webdriver
+import time, openpyxl
+import re
+
+time_start = time.time()
+
+chromeOptions = webdriver.ChromeOptions()
+chromeOptions.add_argument(r"user-data-dir=C:\Users\waowu1\AppData\Local\Google\Chrome\User Data")   
+chromeOptions.add_experimental_option('excludeSwitches', ['enable-logging'])   
+chrome_driver = r"C:\Program Files\Google\Chrome\Application\chromedriver.exe"
+
+wb = openpyxl.Workbook()
+sheet1 = wb.active
+row = ['','app_id', 'app_name','厂商','发行商','开发商','关注','score','安装','预约','购买','tag']
+sheet1.append(row)
+
+driver = webdriver.Chrome(chrome_driver, options=chromeOptions)
+for step in range(0,10):
+    for id in range(0+step*4000,0+(step+1)*4000):
+        url = 'https://www.taptap.com/app/' + str(id)
+        driver.get(url)
+        time.sleep(1.5)
+        # id有效or not
+        try:
+            print(id, driver.find_element_by_class_name('header-banner__title').find_element_by_tag_name('div').text)
+        except:
+            print(id, 'None')
+            continue
+
+        # 爬取
+        # 游戏名
+        try:
+            title = driver.find_element_by_class_name('header-banner__title').find_element_by_tag_name('div').text
+            title = re.sub(u"([^\u4e00-\u9fa5\u0030-\u0039\u0041-\u005a\u0061-\u007a])","",title)
+        except:
+            print('id is null')
+        # score
+        try:
+            score = driver.find_element_by_class_name('game-info__stat--review').text
+            score = re.sub(u"([^\u4e00-\u9fa5\u0030-\u0039\u0041-\u005a\u0061-\u007a])",".",score)
+        except:
+            print('score is null')
+        # tag
+        try:
+            tag = driver.find_element_by_class_name('web-aside-wrapper--tags').text.replace('\n',';')
+            tag = re.sub(u"([^\u4e00-\u9fa5\u0030-\u0039\u0041-\u005a\u0061-\u007a])",";",tag)
+        except:
+            print('tag is null')
+
+        try:
+            game_info = driver.find_element_by_class_name('game-info-warp')
+
+            designer_info = game_info.find_elements_by_tag_name('a')
+            cs, pub, dev = '','',''
+            for i in designer_info:
+                #判断
+                if i.find_element_by_class_name('game-info__key').text == '厂商':
+                    # 厂商
+                    cs = i.find_elements_by_tag_name('span')[1].text
+                    cs = re.sub(u"([^\u4e00-\u9fa5\u0030-\u0039\u0041-\u005a\u0061-\u007a])","",cs)
+                elif i.find_element_by_class_name('game-info__key').text == '发行':
+                    # 发行
+                    pub = i.find_elements_by_tag_name('span')[1].text
+                    pub = re.sub(u"([^\u4e00-\u9fa5\u0030-\u0039\u0041-\u005a\u0061-\u007a])","",pub)
+                else:
+                    # 开发商
+                    dev = i.find_elements_by_tag_name('span')[1].text
+                    dev = re.sub(u"([^\u4e00-\u9fa5\u0030-\u0039\u0041-\u005a\u0061-\u007a])","",dev)
+        except:
+            print('creator is null')
+
+        user_info = game_info.find_elements_by_class_name('game-info__stat--text')
+        fl, subs, dl, purch = '', '', '', ''
+        for j in user_info:
+            if j.find_element_by_class_name('game-info__key').text == '关注':
+                # 关注
+                fl = j.find_elements_by_tag_name('span')[1].text
+            elif j.find_element_by_class_name('game-info__key').text == '预约':
+                # 预约
+                subs = j.find_elements_by_tag_name('span')[1].text
+            elif j.find_element_by_class_name('game-info__key').text == '下载':
+                # 下载
+                dl = j.find_elements_by_tag_name('span')[1].text
+            elif j.find_element_by_class_name('game-info__key').text == '购买':
+                # 购买
+                purch = j.find_elements_by_tag_name('span')[1].text
+
+        row = ['', id, title, cs, pub, dev, fl, score, dl, subs, purch, tag]
+        sheet1.append(row)
+    time.sleep(60)
+
+    time_end = time.time()
+    wb.save('Taptap_0707_'+str(0+step*4000)+'_'+str(0+(step+1)*4000)+'.xlsx')
+
+time_c= time_end - time_start   
+print('Time spent:', time_c, 's')
